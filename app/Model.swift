@@ -18,6 +18,14 @@ final class Model: ObservableObject {
     @Published var options = Options.load() {
         didSet { options.save() }
     }
+    /// The window floats above other apps' windows: on unless turned off.
+    @Published var alwaysOnTop = UserDefaults.standard.object(forKey: "alwaysOnTop") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(alwaysOnTop, forKey: "alwaysOnTop") }
+    }
+    /// The larger layout the green button switches to: wider, with a taller list.
+    @Published var large = UserDefaults.standard.bool(forKey: "large") {
+        didSet { UserDefaults.standard.set(large, forKey: "large") }
+    }
     // a clip applies to the links added next only, so it isn't remembered
     @Published var clipStart = ""
     @Published var clipEnd = ""
@@ -267,6 +275,10 @@ final class Model: ObservableObject {
             items[index].audio = audio
         case let .title(title):
             items[index].title = title
+            saveItems()
+        case let .details(resolution, size):
+            items[index].resolution = resolution
+            items[index].size = size
             saveItems()
         case let .file(path): items[index].file = path
         case let .error(message): lastErrors[id] = message

@@ -4,9 +4,11 @@ Paste a YouTube link and it downloads. A small Mac app, for macOS 13 or later.
 
 ## The app
 
-The app is a small, plain white window: the title bar shows the app's name
-and version, with no divider below it. It drags by any empty spot, and is
-always exactly as big as its content. Along the top: a link field, **Paste**,
+The app is a small, plain white window: the title bar shows its name, ytd,
+with no divider below it. It drags by any empty spot, and is always exactly
+as big as its content. It stays on top of other windows: the pin at the right
+of the title bar turns that off and on. The green button switches to a larger
+layout, wider and with a taller list, and back. Along the top: a link field, **Paste**,
 a quality menu, an options button, **Add** and **Download**.
 
 - **One link:** copy it and switch to the app (it's already in the field), or
@@ -17,8 +19,9 @@ a quality menu, an options button, **Add** and **Download**.
   the quality and options it was added with.
 - **Download** (Download All when the field is empty) starts everything
   waiting in the list, a few side by side: 3 by default, 1 to 5 under
-  options. Each row shows its progress and can be stopped, carried on, retried,
-  removed or shown in Finder. While the list runs, the Dock icon counts what's
+  options. Each row shows the resolution yt-dlp picked, the estimated file size
+  and its progress, and can be stopped, carried on, retried, removed or shown
+  in Finder. While the list runs, the Dock icon counts what's
   left.
 - The list is kept when you quit, so you can collect links now and download
   them later. A download cut off by quitting picks up from its partial file.

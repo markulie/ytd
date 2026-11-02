@@ -53,7 +53,7 @@ struct ContentView: View {
 
             LibrariesCard()
         }
-        .frame(width: 500)
+        .frame(width: model.large ? 740 : 500)
         .padding([.horizontal, .bottom], 10)
         .padding(.top, 2)  // the title bar above already gives the top its space
         .background(PanelBackground())
@@ -85,8 +85,8 @@ struct ActivityView: View {
     }
 }
 
-/// The links waiting, downloading and done; six rows tall at most, then it
-/// scrolls.
+/// The links waiting, downloading and done; six rows tall at most (twelve
+/// in the larger layout), then it scrolls.
 struct DownloadList: View {
     @EnvironmentObject private var model: Model
 
@@ -102,7 +102,7 @@ struct DownloadList: View {
                     ForEach(items) { ItemRow(item: $0) }
                 }
             }
-            .frame(height: CGFloat(min(items.count, 6)) * ItemRow.height)
+            .frame(height: CGFloat(min(items.count, model.large ? 12 : 6)) * ItemRow.height)
 
             HStack(spacing: 8) {
                 Text([
@@ -184,9 +184,11 @@ struct ItemRow: View {
         }
     }
 
-    /// The quality (and clip) it was added with; while downloading, how far.
+    /// The resolution and estimated size once yt-dlp has picked (the quality
+    /// asked for until then), the clip if any, and how far along it is.
     private var badge: String {
-        var parts = [item.quality.label]
+        var parts = [item.resolutionText]
+        if let size = item.sizeText { parts.append(size) }
         if let clip = item.clip { parts.append("clip \(clip)") }
         if item.state == .downloading, let progress = item.progress {
             parts.append("\(item.audio ? "audio" : "video") \(Int(progress * 100))%")
@@ -218,6 +220,22 @@ struct ItemRow: View {
         Button(action: action) { Image(systemName: symbol) }
             .buttonStyle(.borderless)
             .help(help)
+    }
+}
+
+/// The pin in the title bar: keeps the window above other apps' windows.
+struct PinButton: View {
+    @EnvironmentObject private var model: Model
+
+    var body: some View {
+        Button { model.alwaysOnTop.toggle() } label: {
+            Image(systemName: model.alwaysOnTop ? "pin.fill" : "pin")
+                .rotationEffect(.degrees(45))
+                .foregroundColor(model.alwaysOnTop ? .accentColor : .secondary)
+        }
+        .buttonStyle(.borderless)
+        .help(model.alwaysOnTop ? "On top of other windows — click to stop" : "Keep on top of other windows")
+        .frame(width: 34, height: 28)
     }
 }
 

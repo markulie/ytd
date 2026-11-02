@@ -199,12 +199,16 @@ struct Item: Identifiable, Codable, Equatable {
     var state = State.waiting
     var file: String?
     var error: String?
+    /// What yt-dlp picked, known once a download starts: "1920x1080", or
+    /// "audio only"; and its estimated size in bytes.
+    var resolution: String?
+    var size: Int64?
     // while downloading only, so not saved
     var progress: Double?
     var audio = false
 
     private enum CodingKeys: String, CodingKey {
-        case id, link, quality, options, clip, title, state, file, error
+        case id, link, quality, options, clip, title, state, file, error, resolution, size
     }
 
     init(link: String, quality: Quality, options: Options, clip: String?) {
@@ -217,6 +221,19 @@ struct Item: Identifiable, Codable, Equatable {
     /// yt-dlp's flags for this item, before the shared ones.
     var arguments: [String] {
         quality.formatArguments + options.arguments(for: quality, clip: clip)
+    }
+
+    /// "1920×1080", "audio", or the quality asked for until yt-dlp has picked.
+    var resolutionText: String {
+        guard let resolution = resolution else { return quality.label }
+        return resolution == "audio only" ? "audio" : resolution.replacingOccurrences(of: "x", with: "×")
+    }
+
+    /// "≈ 245 MB" — yt-dlp's estimate before the file exists. Not shown for
+    /// a clip: the estimate is for the whole video.
+    var sizeText: String? {
+        guard let size = size, size > 0, clip == nil else { return nil }
+        return "≈ " + ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
     }
 
     /// The same download: same link, quality and clip.
@@ -247,6 +264,7 @@ enum Queue {
 enum YtdlpLine: Equatable {
     case progress(percent: Double, audio: Bool)
     case title(String)
+    case details(resolution: String?, size: Int64?)
     case file(String)
     case error(String)
     case message(String)
@@ -262,6 +280,8 @@ enum YtdlpLine: Equatable {
         "--newline", "--progress", "--color", "never",
         "--progress-template", "download:\(marker)progress %(progress._percent_str)s %(info.vcodec)s",
         "--print", "before_dl:\(marker)title %(title)s",
+        // size first: a resolution can have spaces in it ("audio only")
+        "--print", "before_dl:\(marker)details %(filesize,filesize_approx|NA)s %(resolution|NA)s",
         "--print", "after_move:\(marker)file %(filepath)s",
     ]
     private static let percent = NSRegularExpression(#"(\d+(?:\.\d+)?)%"#)
@@ -280,6 +300,11 @@ enum YtdlpLine: Equatable {
                 }
                 self = .progress(percent: min(figure, 100), audio: value.hasSuffix(" none"))
             case "title": self = .title(value)
+            case "details":
+                let parts = value.split(separator: " ", maxSplits: 1).map(String.init)
+                let resolution = parts.count > 1 && parts[1] != "NA" ? parts[1] : nil
+                // yt-dlp's estimate may come with a fraction
+                self = .details(resolution: resolution, size: parts.first.flatMap(Double.init).map { Int64($0) })
             case "file": self = .file(value)
             default: self = .ignored
             }

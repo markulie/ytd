@@ -155,6 +155,13 @@ struct CoreTests {
         expect(YtdlpLine("@event title Me at the zoo"), .title("Me at the zoo"), "title")
         expect(YtdlpLine("@event file /a/b c.mp4"), .file("/a/b c.mp4"), "file")
         expect(YtdlpLine("ERROR: [youtube] x: Video unavailable"), .error("[youtube] x: Video unavailable"), "error")
+        expect(YtdlpLine("@event details 245123456 1920x1080"), .details(resolution: "1920x1080", size: 245123456),
+               "size and resolution")
+        expect(YtdlpLine("@event details 3141592.6 audio only"), .details(resolution: "audio only", size: 3141592),
+               "a fractional estimate, and a resolution with a space")
+        expect(YtdlpLine("@event details NA NA"), .details(resolution: nil, size: nil), "nothing known")
+        expect(YtdlpLine.eventArguments.contains { $0.contains("details %(filesize,filesize_approx|NA)s") }, true,
+               "yt-dlp is asked for the size")
         expect(YtdlpLine("WARNING: something"), .ignored, "warnings stay out of the way")
         expect(YtdlpLine("   "), .ignored, "blank")
         expect(YtdlpLine("[Merger] Merging formats"), .message("[Merger] Merging formats"), "other output")
@@ -209,6 +216,22 @@ struct CoreTests {
         expect(a.sameDownload(as: Item(link: "l", quality: .audio, options: Options(), clip: nil)), false,
                "another quality is another download")
         expect(a.arguments.first, "-f", "item arguments start with the format")
+
+        var shown = Item(link: "l", quality: .q1080, options: Options(), clip: nil)
+        expect(shown.resolutionText, "1080p", "the quality asked for, until yt-dlp has picked")
+        expect(shown.sizeText, nil, "no size until it's known")
+        shown.resolution = "1920x1080"
+        shown.size = 245_000_000
+        expect(shown.resolutionText, "1920×1080", "the resolution picked")
+        expect(shown.sizeText?.hasPrefix("≈ 245"), true, "an estimated size")
+        shown.resolution = "audio only"
+        expect(shown.resolutionText, "audio", "audio")
+        let clipped = Item(link: "l", quality: .best, options: Options(), clip: "0-10")
+        var clippedSized = clipped
+        clippedSized.size = 1_000_000
+        expect(clippedSized.sizeText, nil, "no whole-video estimate for a clip")
+        let roundTrip = try! JSONDecoder().decode(Item.self, from: JSONEncoder().encode(shown))
+        expect(roundTrip.size, 245_000_000, "size is saved")
     }
 
     static func savedOptions() {
