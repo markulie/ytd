@@ -79,6 +79,16 @@ enum YouTube {
     }
 }
 
+enum ClipboardFill {
+    /// Whether a newly copied link may take the field's place: only when the
+    /// field is empty or still holds a link the app put there itself, so a
+    /// copy elsewhere never wipes out something typed.
+    static func mayReplace(field: String, autoFilled: String?) -> Bool {
+        let field = field.trimmingCharacters(in: .whitespacesAndNewlines)
+        return field.isEmpty || field == autoFilled
+    }
+}
+
 enum Clip {
     private static let time = NSRegularExpression(#"^\d+(?::\d{1,2}){0,2}$"#)  // 90, 1:30, 1:02:03
 

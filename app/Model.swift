@@ -46,6 +46,8 @@ final class Model: ObservableObject {
     private var lastErrors: [Item.ID: String] = [:]
     private var lastChecked: Date?
     private var seenPasteboard = -1
+    private var autoFilled: String?  // the link the app last put in the field
+    private var clipboardWatch: Timer?
 
     var libraryBusy: Bool { libraryJob != nil }
     var downloading: Bool { !runners.isEmpty }
@@ -93,6 +95,13 @@ final class Model: ObservableObject {
                            queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.becameActive() }
         }
+        // follow the clipboard while you're in another app and ytd can be seen
+        for name in [NSApplication.didBecomeActiveNotification, NSApplication.didResignActiveNotification,
+                     NSWindow.didChangeOcclusionStateNotification] {
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateClipboardWatch() }
+            }
+        }
         center.addObserver(forName: NSApplication.willTerminateNotification, object: nil,
                            queue: .main) { [weak self] _ in
             // each download stops cleanly and resumes from its partial file
@@ -115,14 +124,50 @@ final class Model: ObservableObject {
     // MARK: The field
 
     /// Fill the field from the clipboard, but only when all it holds is one
-    /// YouTube link, and only once per copy, so a link you cleared doesn't
-    /// keep coming back.
+    /// YouTube link, only once per copy (so a link you cleared doesn't keep
+    /// coming back), and never over something typed in the field.
     func checkClipboard() {
         let board = NSPasteboard.general
+        // macOS counts clipboard changes: comparing that number reads nothing
         guard board.changeCount != seenPasteboard else { return }
         seenPasteboard = board.changeCount
-        if let text = board.string(forType: .string), let link = YouTube.link(in: text) {
-            url = link
+        guard ClipboardFill.mayReplace(field: url, autoFilled: autoFilled) else { return }
+        if #available(macOS 15.4, *) {
+            // ask macOS whether it's a web link first, so nothing else that's
+            // copied (a password, a message) is ever read
+            Task {
+                let link: PartialKeyPath<NSPasteboard.DetectedValues> = \.probableWebURL
+                guard let found = try? await board.detectedPatterns(for: [link]), found.contains(link) else { return }
+                fill(from: board)
+            }
+        } else {
+            fill(from: board)
+        }
+    }
+
+    private func fill(from board: NSPasteboard) {
+        guard ClipboardFill.mayReplace(field: url, autoFilled: autoFilled),
+              let text = board.string(forType: .string), let link = YouTube.link(in: text) else { return }
+        url = link
+        autoFilled = link
+    }
+
+    /// There's no notification for a copy, so while it can matter — you're in
+    /// another app and ytd's window can be seen — the change count is looked
+    /// at once a second. The rest of the time nothing runs at all.
+    private func updateClipboardWatch() {
+        let seen = NSApp.windows.contains { $0.isVisible && $0.occlusionState.contains(.visible) }
+        if !NSApp.isActive && seen {
+            guard clipboardWatch == nil else { return }
+            let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+                MainActor.assumeIsolated { self?.checkClipboard() }
+            }
+            timer.tolerance = 0.5  // lets macOS run it alongside wake-ups it makes anyway
+            RunLoop.main.add(timer, forMode: .common)
+            clipboardWatch = timer
+        } else {
+            clipboardWatch?.invalidate()
+            clipboardWatch = nil
         }
     }
 
@@ -133,7 +178,9 @@ final class Model: ObservableObject {
         let links = YouTube.links(in: NSPasteboard.general.string(forType: .string) ?? "")
         switch links.count {
         case 0: note = "There's no YouTube link on the clipboard."
-        case 1: url = links[0]
+        case 1:
+            url = links[0]
+            autoFilled = links[0]  // pasted, not typed: a later copy may replace it
         default: add(links)
         }
     }

@@ -11,8 +11,9 @@ of the title bar turns that off and on. The green button switches to a larger
 layout, wider and with a taller list, and back. Along the top: a link field, **Paste**,
 a quality menu, an options button, **Add** and **Download**.
 
-- **One link:** copy it and switch to the app (it's already in the field), or
-  press Paste, then Download (or Return).
+- **One link:** copy it anywhere and it appears in the field, even while
+  ytd sits on top of your browser (or press Paste), then Download (or
+  Return). A copy never replaces something you've typed in the field.
 - **Many links:** copy a whole list (from notes, a chat, a document, one per
   line or separated by spaces) and press Paste: they all go into the download
   list. Or put links in the field one at a time and press Add (⌘↩). Each keeps

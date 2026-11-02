@@ -21,6 +21,7 @@ struct CoreTests {
         qualities()
         links()
         manyLinks()
+        clipboardFill()
         clips()
         options()
         outputTemplates()
@@ -79,6 +80,16 @@ struct CoreTests {
         expect(YouTube.onlyLinks(in: "https://youtu.be/a\nhttps://youtu.be/b,"), true, "one per line")
         expect(YouTube.onlyLinks(in: "https://youtu.be/a and more"), false, "other words")
         expect(YouTube.onlyLinks(in: "   "), false, "empty")
+    }
+
+    static func clipboardFill() {
+        expect(ClipboardFill.mayReplace(field: "", autoFilled: nil), true, "an empty field")
+        expect(ClipboardFill.mayReplace(field: "  ", autoFilled: nil), true, "only spaces")
+        expect(ClipboardFill.mayReplace(field: "https://youtu.be/a", autoFilled: "https://youtu.be/a"), true,
+               "the link it filled in itself")
+        expect(ClipboardFill.mayReplace(field: "https://youtu.be/a", autoFilled: nil), false, "a typed link")
+        expect(ClipboardFill.mayReplace(field: "https://youtu.be/ab", autoFilled: "https://youtu.be/a"), false,
+               "a filled-in link you edited")
     }
 
     static func clips() {
