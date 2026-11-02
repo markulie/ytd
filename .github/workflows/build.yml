@@ -1,58 +1,34 @@
 name: build
 
-# One workflow, three runners — the only way to get all three native formats,
-# since a .exe needs Windows tooling and an .AppImage needs Linux.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+  pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    name: ${{ matrix.label }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false # one platform breaking shouldn't hide the others
-      matrix:
-        include:
-          - os: macos-latest
-            label: macOS (.app)
-            artifact: ytd-macos
-          - os: ubuntu-latest
-            label: Linux (.AppImage)
-            artifact: ytd-linux
-          - os: windows-latest
-            label: Windows (.exe)
-            artifact: ytd-windows
-
+    name: macOS (.app)
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        if: runner.os == 'Windows'
-        with:
-          python-version: "3.13"
+      - name: Test
+        run: bash test.sh
 
       - name: Build
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            pwsh -File build.ps1
-          else
-            bash build.sh
-          fi
+        run: bash build.sh
 
       # .app is a directory; tar keeps its exec bits, which upload-artifact
       # would otherwise strip when it re-zips the tree
       - name: Package the .app
-        if: runner.os == 'macOS'
-        run: tar -C dist -czf dist/ytd-macos.tar.gz ytd.app && rm -rf dist/ytd.app
+        run: tar -C dist -czf dist/ytd-macos.tar.gz YTD.app && rm -rf dist/YTD.app
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: dist/*
+          name: ytd-macos
+          path: dist/ytd-macos.tar.gz
           if-no-files-found: error
 
   release:

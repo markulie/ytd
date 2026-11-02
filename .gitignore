@@ -1,13 +1,5 @@
-# bundled runtimes — re-fetched by ./y and install.sh, never committed
-bin/
-python/
-*.new/
-__pycache__/
-
 # build output
 dist/
 build/
 *.app/
-*.AppImage
-ytd.png
 .DS_Store
